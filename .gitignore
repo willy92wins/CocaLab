@@ -1,0 +1,10 @@
+# CocaLab (compilable tree -> PBO). Assets of the mod ARE versioned here (p3d, paa, rvmat).
+
+# Safe-write leftovers and editor backups
+*.bak
+*.bak_*
+*.preimage
+
+# Build products never live in the source tree
+*.pbo
+*.bisign

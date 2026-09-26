@@ -1,0 +1,10 @@
+# CocaLab (compilable tree -> PBO). What is on disk is what goes into the repo:
+# no line-ending conversion, whatever core.autocrlf says (writes here are verified by sha256).
+* -text
+
+# Binary assets: no textual diff.
+*.p3d binary
+*.paa binary
+*.pbo binary
+*.ogg binary
+*.edds binary
