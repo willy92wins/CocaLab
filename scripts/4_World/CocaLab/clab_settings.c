@@ -151,8 +151,9 @@ class CLab_Settings
 		float clamped = ClampFloatField(field, value, 0, 1);
 		int perMille = CLab_CocaTray.CLab_ToPerMille(clamped);
 		float truncated = perMille * 0.001;
+		// No original value in the line: float ToString rounds it (0.4999999 prints as 0.5) and the line would contradict itself
 		if (Math.AbsFloat(clamped * 1000 - perMille) > CLab_CocaTray.PER_MILLE_EPSILON)
-			Print(LOG_TAG + field + " = " + clamped.ToString() + " has more than 3 decimals, truncated to " + truncated.ToString());
+			Print(LOG_TAG + field + " has more than 3 decimals, truncated to " + truncated.ToString());
 		return truncated;
 	}
 
