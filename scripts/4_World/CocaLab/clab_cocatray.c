@@ -22,6 +22,8 @@ class CLab_CocaTray: Bottle_Base
 	static const float PER_MILLE_EPSILON = 0.000045;
 	//! Animation source of the buds breaking up (config.cpp AnimationSources, model.cfg bud drift and hide)
 	static const string ANIM_BUDS = "clab_buds";
+	//! A pour that ends this close to full, as a fraction of the capacity, is finished from the same container (B-008)
+	static const float TOP_UP_FRACTION = 0.1;
 
 	static const int MIX_NONE = 0;
 	static const int MIX_YELLOW = 1;
@@ -60,7 +62,6 @@ class CLab_CocaTray: Bottle_Base
 	protected int m_CLab_MixStage;
 	protected int m_CLab_CookStage;
 	protected int m_CLab_BagsLeft;
-	protected bool m_CLab_AcceptsGasoline;
 
 	// Server only
 	protected bool m_CLab_MixStarted;
@@ -80,7 +81,6 @@ class CLab_CocaTray: Bottle_Base
 		RegisterNetSyncVariableInt("m_CLab_MixStage", MIX_NONE, MIX_GREEN);
 		RegisterNetSyncVariableInt("m_CLab_CookStage", COOK_NONE, COOK_BURNT);
 		RegisterNetSyncVariableInt("m_CLab_BagsLeft", 0, MAX_BAGS);
-		RegisterNetSyncVariableBool("m_CLab_AcceptsGasoline");
 	}
 
 	// ----------------------------------------------------------------------
@@ -113,18 +113,23 @@ class CLab_CocaTray: Bottle_Base
 		RemoveAction(ActionWashHandsItemContinuous);
 		RemoveAction(ActionDrink);
 		RemoveAction(ActionEmptyBottleBase);
-		// Gasoline goes in only from a jerrycan held in hands (C1): filling the tray held in hands plays the
-		// pour-out animation, the same command as emptying (actiondrainliquid.c:16)
+		// Gasoline goes in only by pouring from a container held in hands (C1, C5): filling the tray held in hands plays
+		// the pour-out animation, the same command as emptying (actiondrainliquid.c:16), and a pump or a well does not fill it
 		RemoveAction(ActionDrainLiquid);
+		RemoveAction(ActionFillBottleBase);
+		// Nothing pours out of the tray into another container: a started cook needs no gasoline (R-a), so the same
+		// gasoline would serve a second batch
+		RemoveAction(ActionPourLiquid);
 
 		AddAction(CLab_ActionRemoveBud);
 		AddAction(CLab_ActionEmptyTray);
 	}
 
-	//! Liquid.CanFillContainer is the only reader (liquid.c:247): 0 closes pouring, draining into the tray and filling at a pump
+	//! Liquid.CanFillContainer is the only reader (liquid.c:247): 0 closes pouring into the tray. Gasoline goes in at any
+	//! time before cooking, with or without buds (C5); both sides read the synchronized cook stage
 	override int GetLiquidContainerMask()
 	{
-		if (m_CLab_AcceptsGasoline)
+		if (m_CLab_CookStage == COOK_NONE && !IsRuined())
 			return super.GetLiquidContainerMask();
 
 		return 0;
@@ -275,16 +280,21 @@ class CLab_CocaTray: Bottle_Base
 			line = string.Format(Widget.TranslateString("#STR_CLab_Desc_Bags"), m_CLab_BagsLeft);
 		else if (m_CLab_BudCount > 0)
 			line = string.Format(Widget.TranslateString("#STR_CLab_Desc_Buds"), m_CLab_BudCount, MAX_BUDS);
-		else
-			return false;
 
-		// Until the mix starts the tray has to be filled up (C4): show how much gasoline it holds
+		// Until the mix starts the tray has to be filled up (C4): show how much gasoline it holds, with or without buds
 		if (m_CLab_MixStage == MIX_NONE && m_CLab_CookStage == COOK_NONE && GetQuantity() > 0)
 		{
 			int gasoline = Math.Round(GetQuantity());
 			int capacity = Math.Round(GetQuantityMax());
-			line = line + "\n" + string.Format(Widget.TranslateString("#STR_CLab_Desc_Gasoline"), gasoline, capacity);
+			string gasolineLine = string.Format(Widget.TranslateString("#STR_CLab_Desc_Gasoline"), gasoline, capacity);
+			if (line == "")
+				line = gasolineLine;
+			else
+				line = line + "\n" + gasolineLine;
 		}
+
+		if (line == "")
+			return false;
 
 		output = ConfigGetString("descriptionShort") + "\n" + line;
 		return true;
@@ -329,9 +339,10 @@ class CLab_CocaTray: Bottle_Base
 	// Queries for action and recipe conditions: synchronized fields only, so client and server agree
 	// ----------------------------------------------------------------------
 
+	//! With or without gasoline, until the mix turns green or cooking starts (B1, D4): a green mix would come back with a single bud
 	bool CLab_CanAddBud()
 	{
-		return m_CLab_BudCount < MAX_BUDS && GetQuantity() <= 0 && m_CLab_MixStage == MIX_NONE && m_CLab_CookStage == COOK_NONE && !IsRuined();
+		return m_CLab_BudCount < MAX_BUDS && m_CLab_MixStage != MIX_GREEN && m_CLab_CookStage == COOK_NONE && !IsRuined();
 	}
 
 	bool CLab_CanRemoveBud()
@@ -359,9 +370,33 @@ class CLab_CocaTray: Bottle_Base
 			return;
 
 		m_CLab_BudCount++;
+		// A bud added to a started mix restarts the maceration from zero, whatever went in first (D4)
+		if (m_CLab_MixStarted)
+		{
+			m_CLab_MixSeconds = 0;
+			m_CLab_LastTick = g_Game.GetTickTime();
+			CLab_Log("maceration restarted buds=" + m_CLab_BudCount.ToString());
+		}
 		CLab_RefreshState();
 		// The bud count is synchronized but not derived: RefreshState does not see it change
 		SetSynchDirty();
+	}
+
+	//! Server, at the end of a pour into the tray (modded ActionPourLiquid): the vanilla transfer can end a little short of
+	//! full (960 of 1000 ml measured, B-008), which keeps the mix from starting. What is missing comes from the same container.
+	void CLab_TopUp(ItemBase source)
+	{
+		if (!g_Game.IsServer() || !source || IsRuined() || m_CLab_CookStage != COOK_NONE)
+			return;
+
+		float missing = GetQuantityMax() - GetQuantity();
+		if (missing <= 0 || missing > GetQuantityMax() * TOP_UP_FRACTION)
+			return;
+		if (!Liquid.CanTransfer(source, this))
+			return;
+
+		Liquid.Transfer(source, this, missing);
+		CLab_Log("pour topped up missing=" + missing.ToString() + " q=" + GetQuantity().ToString());
 	}
 
 	//! The leaf is created first and the bud removed only if that worked; a new DP_CocaLeaves starts at 2 (fruits/config.cpp:32)
@@ -451,7 +486,7 @@ class CLab_CocaTray: Bottle_Base
 		SetSynchDirty();
 	}
 
-	//! Server: derives stages, bags and gasoline acceptance, runs the clock and syncs. Never changes the quantity, so calling it from OnQuantityChanged does not re-enter.
+	//! Server: derives stages and bags, runs the clock and syncs. Never changes the quantity, so calling it from OnQuantityChanged does not re-enter.
 	void CLab_RefreshState()
 	{
 		if (!g_Game.IsServer())
@@ -481,8 +516,6 @@ class CLab_CocaTray: Bottle_Base
 		if (bagsLeft < 0)
 			bagsLeft = 0;
 
-		bool acceptsGasoline = m_CLab_BudCount >= settings.MinBudsToMacerate && !cooking && !ruined;
-
 		bool dirty = false;
 		if (mixStage != m_CLab_MixStage)
 		{
@@ -499,11 +532,6 @@ class CLab_CocaTray: Bottle_Base
 		if (bagsLeft != m_CLab_BagsLeft)
 		{
 			m_CLab_BagsLeft = bagsLeft;
-			dirty = true;
-		}
-		if (acceptsGasoline != m_CLab_AcceptsGasoline)
-		{
-			m_CLab_AcceptsGasoline = acceptsGasoline;
 			dirty = true;
 		}
 		if (dirty)

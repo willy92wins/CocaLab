@@ -11,7 +11,7 @@ class CLab_Settings
 	int MinBudsToMacerate = 2;
 	float FullLevelFraction = 1.0;
 	float MacerationWhitishSeconds = 300;
-	float MacerationGreenSeconds = 1800;
+	float MacerationGreenSeconds = 2700;
 	float CookMinTemperature = 90;
 	float CookDoneSeconds = 240;
 	float CookCopperSeconds = 360;
