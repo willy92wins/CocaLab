@@ -17,6 +17,8 @@ class CLab_CocaTray: Bottle_Base
 	static const float TICK_SECONDS = 5.0;
 	//! A longer gap between ticks (server stall) does not add maceration time beyond this
 	static const float MAX_TICK_DELTA = 15.0;
+	//! Tolerance of CLab_ToPerMille, in thousandths
+	static const float PER_MILLE_EPSILON = 0.000045;
 
 	static const int MIX_NONE = 0;
 	static const int MIX_YELLOW = 1;
@@ -161,6 +163,16 @@ class CLab_CocaTray: Bottle_Base
 		CLab_UpdateVisuals();
 	}
 
+	//! The gas stove drops its equipment reference before stopping the effects (portablegasstove.c:97-110), so the
+	//! tray stops its own on any move; the next cooking tick restores them if it still cooks
+	override void EEItemLocationChanged(notnull InventoryLocation oldLoc, notnull InventoryLocation newLoc)
+	{
+		super.EEItemLocationChanged(oldLoc, newLoc);
+
+		if (g_Game.IsServer())
+			CLab_StopCookingEffects();
+	}
+
 	//! Server side, fired by SetQuantity except while loading from storage (itembase.c:3398-3404)
 	override void OnQuantityChanged(float delta)
 	{
@@ -177,7 +189,7 @@ class CLab_CocaTray: Bottle_Base
 
 		if (g_Game.IsServer() && newLevel == GameConstants.STATE_RUINED)
 		{
-			CLab_Log("ruined, content lost");
+			CLab_Log("ruined, content lost buds=" + m_CLab_BudCount.ToString() + " q=" + GetQuantity().ToString() + " cookSec=" + m_CLab_CookSeconds.ToString());
 			CLab_Reset();
 		}
 	}
@@ -475,7 +487,10 @@ class CLab_CocaTray: Bottle_Base
 			SetSynchDirty();
 
 		CLab_UpdateTimer(m_CLab_BudCount > 0 && !cooking && !ruined);
-		CLab_UpdateVisuals();
+
+		// A dedicated server renders nothing; clients update from OnVariablesSynchronized
+		if (!g_Game.IsDedicatedServer())
+			CLab_UpdateVisuals();
 	}
 
 	//! Timer callback (server). No allocations here: it runs every TICK_SECONDS per tray.
@@ -575,10 +590,17 @@ class CLab_CocaTray: Bottle_Base
 	// Pure functions, shared by the tray and the settings self-test
 	// ----------------------------------------------------------------------
 
-	//! Yield in whole thousandths; the +0.001 absorbs float error (0.251 would drop to 250 in float32)
+	//! Yield in whole thousandths, truncating extra decimals. A 3-decimal yield x 1000 is off by at most 2^-15 in
+	//! float32 (measured over all 1001 values; 0.251 lands just below 251), so a value that close to a thousandth is
+	//! that thousandth. PER_MILLE_EPSILON stays under one float step near 1000 (6.1e-5): 0.4999999 gives 499, not 500.
 	static int CLab_ToPerMille(float value)
 	{
-		return (int)Math.Floor(value * 1000 + 0.001);
+		float scaled = value * 1000;
+		float nearest = Math.Round(scaled);
+		if (Math.AbsFloat(scaled - nearest) <= PER_MILLE_EPSILON)
+			return (int)nearest;
+
+		return (int)Math.Floor(scaled);
 	}
 
 	//! F1 in integers: floor(buds / 2 x mix yield x cook yield), exact for yields with up to 3 decimals

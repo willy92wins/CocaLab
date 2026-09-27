@@ -151,7 +151,7 @@ class CLab_Settings
 		float clamped = ClampFloatField(field, value, 0, 1);
 		int perMille = CLab_CocaTray.CLab_ToPerMille(clamped);
 		float truncated = perMille * 0.001;
-		if (Math.AbsFloat(clamped * 1000 - perMille) > 0.001)
+		if (Math.AbsFloat(clamped * 1000 - perMille) > CLab_CocaTray.PER_MILLE_EPSILON)
 			Print(LOG_TAG + field + " = " + clamped.ToString() + " has more than 3 decimals, truncated to " + truncated.ToString());
 		return truncated;
 	}
@@ -180,14 +180,17 @@ class CLab_Settings
 		failures += CheckBags("0 whitish white", 0, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 0, -1, -1);
 		failures += CheckBags("12 yellow white YieldYellow=0.99999", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 5, 0.99999, -1);
 		failures += CheckBags("11 whitish white YieldWhitish=0.95", 11, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 5, -1, 0.95);
-		cases += 14;
+		failures += CheckBags("12 yellow white YieldYellow=0.4999999", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 2, 0.4999999, -1);
+		cases += 15;
 
 		failures += CheckPerMille(0.251, 251);
 		failures += CheckPerMille(0.253, 253);
 		failures += CheckPerMille(0.502, 502);
 		failures += CheckPerMille(0.506, 506);
 		failures += CheckPerMille(0.511, 511);
-		cases += 5;
+		failures += CheckPerMille(0.4999999, 499);
+		failures += CheckPerMille(0.7009999, 700);
+		cases += 7;
 
 		if (failures == 0)
 			Print(LOG_TAG + "CLab selftest PASS (" + cases.ToString() + " cases)");
