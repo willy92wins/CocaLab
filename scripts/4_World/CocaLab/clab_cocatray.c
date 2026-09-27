@@ -143,6 +143,8 @@ class CLab_CocaTray: Bottle_Base
 		}
 
 		CLab_RefreshState();
+		// Loaded fields can equal the defaults of the derived values, so RefreshState alone may not sync them
+		SetSynchDirty();
 	}
 
 	override void EEDelete(EntityAI parent)
@@ -328,6 +330,8 @@ class CLab_CocaTray: Bottle_Base
 
 		m_CLab_BudCount++;
 		CLab_RefreshState();
+		// The bud count is synchronized but not derived: RefreshState does not see it change
+		SetSynchDirty();
 	}
 
 	//! The leaf is created first and the bud removed only if that worked; a new DP_CocaLeaves starts at 2 (fruits/config.cpp:32)
@@ -347,6 +351,7 @@ class CLab_CocaTray: Bottle_Base
 		leaf.SetQuantity(1);
 		m_CLab_BudCount--;
 		CLab_RefreshState();
+		SetSynchDirty();
 	}
 
 	//! Scrapes as many bags as there are empty bags; the rest of the powder stays for later (F2). Yield 0 empties the tray (F4).
