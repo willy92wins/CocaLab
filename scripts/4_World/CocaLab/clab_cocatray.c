@@ -384,9 +384,10 @@ class CLab_CocaTray: Bottle_Base
 
 	//! Server, at the end of a pour into the tray (modded ActionPourLiquid): the vanilla transfer can end a little short of
 	//! full (960 of 1000 ml measured, B-008), which keeps the mix from starting. What is missing comes from the same container.
+	//! The end also follows an interrupted pour, and Liquid.CanTransfer does not check ruin, so the source is checked here.
 	void CLab_TopUp(ItemBase source)
 	{
-		if (!g_Game.IsServer() || !source || IsRuined() || m_CLab_CookStage != COOK_NONE)
+		if (!g_Game.IsServer() || !source || source.IsRuined() || IsRuined() || m_CLab_CookStage != COOK_NONE)
 			return;
 
 		float missing = GetQuantityMax() - GetQuantity();
