@@ -57,8 +57,8 @@ class CfgVehicles
 	class CLab_CocaTray: Bottle_Base
 	{
 		scope=2;
-		displayName="Maceration Tray";
-		descriptionShort="Deep stainless steel tray. Holds up to twelve coca buds soaking in gasoline and sits on any stove, oven or fireplace grate.";
+		displayName="$STR_CLab_Tray";
+		descriptionShort="$STR_CLab_Tray_Desc";
 		model="\CocaLab\data\clab_tray.p3d";
 		rotationFlags=2;
 		weight=900;

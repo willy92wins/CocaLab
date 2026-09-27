@@ -109,6 +109,9 @@ class CLab_CocaTray: Bottle_Base
 		RemoveAction(ActionWashHandsItemContinuous);
 		RemoveAction(ActionDrink);
 		RemoveAction(ActionEmptyBottleBase);
+		// Gasoline goes in only from a jerrycan held in hands (C1): filling the tray held in hands plays the
+		// pour-out animation, the same command as emptying (actiondrainliquid.c:16)
+		RemoveAction(ActionDrainLiquid);
 
 		AddAction(CLab_ActionRemoveBud);
 		AddAction(CLab_ActionEmptyTray);
