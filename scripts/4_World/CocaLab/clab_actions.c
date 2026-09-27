@@ -83,13 +83,15 @@ modded class ActionConstructor
 	}
 }
 
-//! Held with both hands like the vanilla cooking pot (dayzplayercfgbase.c:1026), not like a bottle (:1067). The pot
-//! animation set also swaps the bottle pour, cap and all, for the pot pour on "Empty tray" (player_main_2h_pot.asi:26-41).
+//! Held with both hands by the short ends, with the vanilla truck battery grip (dayzplayercfgbase.c:843): its wrists
+//! sit at X = +-29 cm of the item origin and the model lies along X, 43 cm long. The pot grip (:1026) put the hands
+//! inside the tray (B-005). The pot animation set stays: its pour replaces the bottle pour, cap and all, on
+//! "Empty tray" (player_main_2h_pot.asi:26-41), as vanilla pairs one item's set with another's grip (:1000).
 modded class ModItemRegisterCallbacks
 {
 	override void RegisterTwoHanded(DayZPlayerType pType, DayzPlayerItemBehaviorCfg pBehavior)
 	{
 		super.RegisterTwoHanded(pType, pBehavior);
-		pType.AddItemInHandsProfileIK("CLab_CocaTray", "dz/anims/workspaces/player/player_main/props/player_main_2h_pot.asi", pBehavior, "dz/anims/anm/player/ik/two_handed/CookingPot.anm");
+		pType.AddItemInHandsProfileIK("CLab_CocaTray", "dz/anims/workspaces/player/player_main/props/player_main_2h_pot.asi", pBehavior, "dz/anims/anm/player/ik/vehicles/BatteryTruck.anm");
 	}
 }
