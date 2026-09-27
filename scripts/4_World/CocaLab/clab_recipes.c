@@ -4,6 +4,10 @@
 // and a 0 left in place rejects the quantity (:441) or sets the ingredient health to 0 (:390-394).
 // The manager sorts the two items to the ingredient order before CanDo/Do
 // (pluginrecipesmanager.c:321,337); the tray is still looked up on both sides.
+// CanDo copies the ingredients to locals first and does not call super.CanDo: after handing the static array
+// on to super, the array read back with the tray in both slots and CanDo came out false on the server (B-003).
+// Of 206 vanilla CanDo overrides only craftlongtorch.c:61 calls super, as its last statement; the base check
+// it would add rejects ingredients with attachments, which neither ingredient of these recipes can have.
 // ==========================================================================
 
 class CLab_RecipeAddBud extends RecipeBase
@@ -43,14 +47,15 @@ class CLab_RecipeAddBud extends RecipeBase
 
 	override bool CanDo(ItemBase ingredients[], PlayerBase player)
 	{
-		if (!super.CanDo(ingredients, player))
+		ItemBase first = ingredients[0];
+		ItemBase second = ingredients[1];
+		CLab_CocaTray tray = CLab_CocaTray.Cast(second);
+		if (!tray)
+			tray = CLab_CocaTray.Cast(first);
+		if (!tray)
 			return false;
 
-		CLab_CocaTray tray = CLab_CocaTray.Cast(ingredients[1]);
-		if (!tray)
-			tray = CLab_CocaTray.Cast(ingredients[0]);
-
-		return tray && tray.CLab_CanAddBud();
+		return tray.CLab_CanAddBud();
 	}
 
 	override void Do(ItemBase ingredients[], PlayerBase player, array<ItemBase> results, float specialty_weight)
@@ -101,14 +106,15 @@ class CLab_RecipeScrapePowder extends RecipeBase
 
 	override bool CanDo(ItemBase ingredients[], PlayerBase player)
 	{
-		if (!super.CanDo(ingredients, player))
+		ItemBase first = ingredients[0];
+		ItemBase second = ingredients[1];
+		CLab_CocaTray tray = CLab_CocaTray.Cast(second);
+		if (!tray)
+			tray = CLab_CocaTray.Cast(first);
+		if (!tray)
 			return false;
 
-		CLab_CocaTray tray = CLab_CocaTray.Cast(ingredients[1]);
-		if (!tray)
-			tray = CLab_CocaTray.Cast(ingredients[0]);
-
-		return tray && tray.CLab_HasPowder();
+		return tray.CLab_HasPowder();
 	}
 
 	override void Do(ItemBase ingredients[], PlayerBase player, array<ItemBase> results, float specialty_weight)
