@@ -20,8 +20,8 @@ class CLab_CocaTray: Bottle_Base
 	static const float MAX_TICK_DELTA = 15.0;
 	//! Tolerance of CLab_ToPerMille, in thousandths
 	static const float PER_MILLE_EPSILON = 0.000045;
-	//! Animation source of the cooking progress (config.cpp AnimationSources, model.cfg bud drift and hide)
-	static const string ANIM_COOK = "clab_cook";
+	//! Animation source of the buds breaking up (config.cpp AnimationSources, model.cfg bud drift and hide)
+	static const string ANIM_BUDS = "clab_buds";
 
 	static const int MIX_NONE = 0;
 	static const int MIX_YELLOW = 1;
@@ -71,8 +71,8 @@ class CLab_CocaTray: Bottle_Base
 	protected ref Timer m_CLab_MixTimer;
 	//! The DP_CocaBag stack the last scrape filled. Not stored; a plain reference, so it reads null once the bag is gone
 	protected ItemBase m_CLab_OpenBag;
-	//! Last phase sent to ANIM_COOK, so the phase is only set when it changes
-	protected float m_CLab_CookPhase;
+	//! Last phase sent to ANIM_BUDS, so the phase is only set when it changes
+	protected float m_CLab_BudPhase;
 
 	void CLab_CocaTray()
 	{
@@ -509,15 +509,18 @@ class CLab_CocaTray: Bottle_Base
 		if (dirty)
 			SetSynchDirty();
 
-		// The buds drift, sink and hide with the cooking progress (model.cfg). Set on the server only, as vanilla
-		// does for the fireplace (fireplacebase.c:761-806); the engine replicates the phase
-		float cookPhase = 0;
+		// The buds break up while the mix macerates: they drift, sink and hide (model.cfg) and are gone by the time
+		// it turns whitish. Cooking finishes off any left in a mix cooked while still yellow. Set on the server only,
+		// as vanilla does for the fireplace (fireplacebase.c:761-806); the engine replicates the phase
+		float budPhase = 0;
+		if (m_CLab_MixStarted)
+			budPhase = Math.Clamp(m_CLab_MixSeconds / settings.MacerationWhitishSeconds, 0, 1);
 		if (cooking)
-			cookPhase = Math.Clamp(m_CLab_CookSeconds / settings.CookDoneSeconds, 0, 1);
-		if (cookPhase != m_CLab_CookPhase)
+			budPhase = Math.Max(budPhase, Math.Clamp(m_CLab_CookSeconds / settings.CookDoneSeconds, 0, 1));
+		if (budPhase != m_CLab_BudPhase)
 		{
-			m_CLab_CookPhase = cookPhase;
-			SetAnimationPhase(ANIM_COOK, cookPhase);
+			m_CLab_BudPhase = budPhase;
+			SetAnimationPhase(ANIM_BUDS, budPhase);
 		}
 
 		CLab_UpdateTimer(m_CLab_BudCount > 0 && !cooking && !ruined);

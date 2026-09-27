@@ -128,8 +128,8 @@ class CfgVehicles
 		};
 		class AnimationSources
 		{
-			// Cooking progress 0..1, set on the server; model.cfg drifts and hides the buds with it
-			class clab_cook
+			// Buds breaking up 0..1 (maceration to whitish, then cooking), set on the server; model.cfg drifts and hides the buds
+			class clab_buds
 			{
 				source="user";
 				animPeriod=0.0099999998;
