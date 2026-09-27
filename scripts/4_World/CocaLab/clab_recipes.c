@@ -75,11 +75,11 @@ class CLab_RecipeScrapePowder extends RecipeBase
 	{
 		m_Name = "#STR_CLab_Scrape";
 		m_IsInstaRecipe = false;
-		m_AnimationLength = 1;
+		m_AnimationLength = 0.5;	// 2 s per bag, as the DrugsPLUS bag recipe (CraftCocaBag.c:7)
 		m_Specialty = 0;
 		m_AnywhereInInventory = false;	// either ingredient must be in hands
 
-		// Ingredient 0: empty bags; Do takes one per scraped bag (F2)
+		// Ingredient 0: empty bags; Do takes one per cycle (F2)
 		m_MinDamageIngredient[0] = -1;
 		m_MaxDamageIngredient[0] = -1;
 		m_MinQuantityIngredient[0] = 1;
@@ -115,6 +115,13 @@ class CLab_RecipeScrapePowder extends RecipeBase
 			return false;
 
 		return tray.CLab_HasPowder();
+	}
+
+	//! One bag per cycle while the action is held (cacontinuouscraft.c:61-64). The server checks the recipe again on every
+	//! tick (actionworldcraft.c:89-110), so the action ends by itself when the powder or the empty bags run out.
+	override bool IsRepeatable()
+	{
+		return true;
 	}
 
 	override void Do(ItemBase ingredients[], PlayerBase player, array<ItemBase> results, float specialty_weight)

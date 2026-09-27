@@ -1,7 +1,7 @@
 // ==========================================================================
 // Actions on the maceration tray held in hands: removing a bud (single use, template: actionemptyseedspack.c)
-// and emptying the tray (continuous pour, template: actionemptycookingpot.c).
-// CCINonRuined hides both on a ruined tray, which accepts nothing any more (B5).
+// and emptying the tray (continuous pour, template: actionemptycookingpot.c), plus how the tray is held.
+// CCINonRuined hides both actions on a ruined tray, which accepts nothing any more (B5).
 // ==========================================================================
 
 class CLab_ActionRemoveBud: ActionSingleUseBase
@@ -80,5 +80,16 @@ modded class ActionConstructor
 		super.RegisterActions(actions);
 		actions.Insert(CLab_ActionRemoveBud);
 		actions.Insert(CLab_ActionEmptyTray);
+	}
+}
+
+//! Held with both hands like the vanilla cooking pot (dayzplayercfgbase.c:1026), not like a bottle (:1067). The pot
+//! animation set also swaps the bottle pour, cap and all, for the pot pour on "Empty tray" (player_main_2h_pot.asi:26-41).
+modded class ModItemRegisterCallbacks
+{
+	override void RegisterTwoHanded(DayZPlayerType pType, DayzPlayerItemBehaviorCfg pBehavior)
+	{
+		super.RegisterTwoHanded(pType, pBehavior);
+		pType.AddItemInHandsProfileIK("CLab_CocaTray", "dz/anims/workspaces/player/player_main/props/player_main_2h_pot.asi", pBehavior, "dz/anims/anm/player/ik/two_handed/CookingPot.anm");
 	}
 }

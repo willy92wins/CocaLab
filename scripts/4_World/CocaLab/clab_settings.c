@@ -22,6 +22,7 @@ class CLab_Settings
 	float YieldWhite = 1.0;
 	float YieldCopper = 0.5;
 	float YieldBurnt = 0.0;
+	int BudsPerBag = 2;
 	bool DebugLog = false;
 
 	static const string DIRECTORY = "$profile:CocaLab";
@@ -94,6 +95,7 @@ class CLab_Settings
 		YieldWhite = other.YieldWhite;
 		YieldCopper = other.YieldCopper;
 		YieldBurnt = other.YieldBurnt;
+		BudsPerBag = other.BudsPerBag;
 		DebugLog = other.DebugLog;
 	}
 
@@ -115,6 +117,7 @@ class CLab_Settings
 		YieldWhite = TruncateYieldField("YieldWhite", YieldWhite);
 		YieldCopper = TruncateYieldField("YieldCopper", YieldCopper);
 		YieldBurnt = TruncateYieldField("YieldBurnt", YieldBurnt);
+		BudsPerBag = ClampIntField("BudsPerBag", BudsPerBag, 1, CLab_CocaTray.MAX_BUDS);
 	}
 
 	protected int ClampIntField(string field, int value, int minValue, int maxValue)
@@ -167,22 +170,28 @@ class CLab_Settings
 		int failures = 0;
 		int cases = 0;
 
-		failures += CheckBags("12 whitish white", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 6, -1, -1);
-		failures += CheckBags("12 yellow white", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 3, -1, -1);
-		failures += CheckBags("12 whitish copper", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_COPPER, 3, -1, -1);
-		failures += CheckBags("12 yellow copper", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_COPPER, 1, -1, -1);
-		failures += CheckBags("12 green white", 12, CLab_CocaTray.MIX_GREEN, CLab_CocaTray.COOK_WHITE, 0, -1, -1);
-		failures += CheckBags("12 whitish burnt", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_BURNT, 0, -1, -1);
-		failures += CheckBags("11 whitish white", 11, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 5, -1, -1);
-		failures += CheckBags("7 whitish copper", 7, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_COPPER, 1, -1, -1);
-		failures += CheckBags("3 whitish white", 3, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 1, -1, -1);
-		failures += CheckBags("2 whitish white", 2, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 1, -1, -1);
-		failures += CheckBags("2 yellow white", 2, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 0, -1, -1);
-		failures += CheckBags("0 whitish white", 0, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 0, -1, -1);
-		failures += CheckBags("12 yellow white YieldYellow=0.99999", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 5, 0.99999, -1);
-		failures += CheckBags("11 whitish white YieldWhitish=0.95", 11, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 5, -1, 0.95);
-		failures += CheckBags("12 yellow white YieldYellow=0.4999999", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 2, 0.4999999, -1);
-		cases += 15;
+		failures += CheckBags("12 whitish white", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 6, -1, -1, -1);
+		failures += CheckBags("12 yellow white", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 3, -1, -1, -1);
+		failures += CheckBags("12 whitish copper", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_COPPER, 3, -1, -1, -1);
+		failures += CheckBags("12 yellow copper", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_COPPER, 1, -1, -1, -1);
+		failures += CheckBags("12 green white", 12, CLab_CocaTray.MIX_GREEN, CLab_CocaTray.COOK_WHITE, 0, -1, -1, -1);
+		failures += CheckBags("12 whitish burnt", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_BURNT, 0, -1, -1, -1);
+		failures += CheckBags("11 whitish white", 11, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 5, -1, -1, -1);
+		failures += CheckBags("7 whitish copper", 7, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_COPPER, 1, -1, -1, -1);
+		failures += CheckBags("3 whitish white", 3, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 1, -1, -1, -1);
+		failures += CheckBags("2 whitish white", 2, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 1, -1, -1, -1);
+		failures += CheckBags("2 yellow white", 2, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 0, -1, -1, -1);
+		failures += CheckBags("0 whitish white", 0, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 0, -1, -1, -1);
+		failures += CheckBags("12 yellow white YieldYellow=0.99999", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 5, 0.99999, -1, -1);
+		failures += CheckBags("11 whitish white YieldWhitish=0.95", 11, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 5, -1, 0.95, -1);
+		failures += CheckBags("12 yellow white YieldYellow=0.4999999", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_WHITE, 2, 0.4999999, -1, -1);
+		failures += CheckBags("12 whitish white BudsPerBag=1", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 12, -1, -1, 1);
+		failures += CheckBags("12 yellow copper BudsPerBag=1", 12, CLab_CocaTray.MIX_YELLOW, CLab_CocaTray.COOK_COPPER, 3, -1, -1, 1);
+		failures += CheckBags("7 whitish white BudsPerBag=3", 7, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 2, -1, -1, 3);
+		failures += CheckBags("11 whitish copper BudsPerBag=5", 11, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_COPPER, 1, -1, -1, 5);
+		failures += CheckBags("12 whitish white BudsPerBag=12", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_WHITE, 1, -1, -1, 12);
+		failures += CheckBags("12 whitish copper BudsPerBag=12", 12, CLab_CocaTray.MIX_WHITISH, CLab_CocaTray.COOK_COPPER, 0, -1, -1, 12);
+		cases += 21;
 
 		failures += CheckPerMille(0.251, 251);
 		failures += CheckPerMille(0.253, 253);
@@ -199,14 +208,17 @@ class CLab_Settings
 			Print(LOG_TAG + "CLab selftest FAIL: " + failures.ToString() + " of " + cases.ToString() + " cases");
 	}
 
-	//! Returns 1 on failure. yellowOverride / whitishOverride replace YieldYellow / YieldWhitish when >= 0.
-	protected int CheckBags(string label, int buds, int mixStage, int cookStage, int expected, float yellowOverride, float whitishOverride)
+	//! Returns 1 on failure. yellowOverride / whitishOverride replace YieldYellow / YieldWhitish when >= 0,
+	//! budsPerBagOverride replaces BudsPerBag when > 0.
+	protected int CheckBags(string label, int buds, int mixStage, int cookStage, int expected, float yellowOverride, float whitishOverride, int budsPerBagOverride)
 	{
 		CLab_Settings defaults = new CLab_Settings();
 		if (yellowOverride >= 0)
 			defaults.YieldYellow = yellowOverride;
 		if (whitishOverride >= 0)
 			defaults.YieldWhitish = whitishOverride;
+		if (budsPerBagOverride > 0)
+			defaults.BudsPerBag = budsPerBagOverride;
 
 		int bags = CLab_CocaTray.CLab_ComputeBags(buds, mixStage, cookStage, defaults);
 		if (bags == expected)

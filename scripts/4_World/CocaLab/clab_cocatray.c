@@ -9,9 +9,10 @@
 class CLab_CocaTray: Bottle_Base
 {
 	static const int MAX_BUDS = 12;
-	static const int MAX_BAGS = 6;
-	//! DP_CocaBag stack limit (DrugsPLUS bags/config.cpp:31-34)
-	static const int MAX_BAG_STACK = 35;
+	//! Most bags one tray can give: a bag per bud (BudsPerBag 1) with both yields at 1
+	static const int MAX_BAGS = 12;
+	//! A bag stack left on the ground is filled further only this close to the scraping player, in metres
+	static const float OPEN_BAG_DISTANCE = 2.0;
 	//! Mod storage schema version, independent from the engine storage version passed to OnStoreLoad
 	static const int STORE_VERSION = 1;
 	static const float TICK_SECONDS = 5.0;
@@ -66,6 +67,8 @@ class CLab_CocaTray: Bottle_Base
 	protected int m_CLab_BagsScraped;
 	protected float m_CLab_LastTick;
 	protected ref Timer m_CLab_MixTimer;
+	//! The DP_CocaBag stack the last scrape filled. Not stored; a plain reference, so it reads null once the bag is gone
+	protected ItemBase m_CLab_OpenBag;
 
 	void CLab_CocaTray()
 	{
@@ -366,42 +369,47 @@ class CLab_CocaTray: Bottle_Base
 		SetSynchDirty();
 	}
 
-	//! Scrapes as many bags as there are empty bags; the rest of the powder stays for later (F2). Yield 0 empties the tray (F4).
+	//! One bag per recipe cycle, added to the stack being filled. The recipe repeats while the action is held; powder left
+	//! when the player lets go or the empty bags run out stays for later (F2). Yield 0 empties the tray (F4).
 	void CLab_Scrape(ItemBase bags, PlayerBase player)
 	{
 		if (!g_Game.IsServer() || !bags || !player || !CLab_HasPowder())
 			return;
 
-		int left = m_CLab_BagsLeft;
-		if (left <= 0)
+		if (m_CLab_BagsLeft <= 0)
 		{
 			CLab_Log("scrape with nothing left, tray emptied");
 			CLab_Reset();
 			return;
 		}
 
-		int available = (int)bags.GetQuantity();
-		int count = left;
-		if (available < count)
-			count = available;
-		if (count > MAX_BAG_STACK)
-			count = MAX_BAG_STACK;
-		if (count <= 0)
+		if (bags.GetQuantity() < 1)
 			return;
 
-		EntityAI created = player.GetInventory().CreateInInventory("DP_CocaBag");
-		if (!created)
-			created = player.SpawnEntityOnGroundRaycastDispersed("DP_CocaBag");
+		// The bag is made first: if that fails, nothing is taken
+		ItemBase product = CLab_GetOpenBag(player);
+		if (product)
+		{
+			product.AddQuantity(1);
+		}
+		else
+		{
+			EntityAI created = player.GetInventory().CreateInInventory("DP_CocaBag");
+			if (!created)
+				created = player.SpawnEntityOnGroundRaycastDispersed("DP_CocaBag");
 
-		ItemBase product = ItemBase.Cast(created);
-		if (!product)
-			return;
+			product = ItemBase.Cast(created);
+			if (!product)
+				return;
 
-		product.SetQuantity(count);
-		bags.AddQuantity(-count);
-		m_CLab_BagsScraped += count;
-		int remaining = left - count;
-		CLab_Log("scraped " + count.ToString() + " bags, left " + remaining.ToString());
+			product.SetQuantity(1);
+			m_CLab_OpenBag = product;
+		}
+
+		bags.AddQuantity(-1);
+		m_CLab_BagsScraped++;
+		int remaining = m_CLab_BagsLeft - 1;
+		CLab_Log("scraped 1 bag, stack " + product.GetQuantity().ToString() + ", left " + remaining.ToString());
 
 		if (remaining <= 0)
 			CLab_Reset();
@@ -603,7 +611,8 @@ class CLab_CocaTray: Bottle_Base
 		return (int)Math.Floor(scaled);
 	}
 
-	//! F1 in integers: floor(buds / 2 x mix yield x cook yield), exact for yields with up to 3 decimals
+	//! F1 in integers: floor(buds / BudsPerBag x mix yield x cook yield), exact for yields with up to 3 decimals.
+	//! The numerator stays under 12 x 1000 x 1000, far inside 32 bits.
 	static int CLab_ComputeBags(int buds, int mixStage, int cookStage, CLab_Settings settings)
 	{
 		float mixYield = 0;
@@ -626,9 +635,14 @@ class CLab_CocaTray: Bottle_Base
 		else
 			return 0;
 
+		// Validate keeps BudsPerBag at 1 or more; a hand-built settings object must not divide by zero
+		int budsPerBag = settings.BudsPerBag;
+		if (budsPerBag < 1)
+			budsPerBag = 1;
+
 		int mixPerMille = CLab_ToPerMille(mixYield);
 		int cookPerMille = CLab_ToPerMille(cookYield);
-		return (buds * mixPerMille * cookPerMille) / 2000000;
+		return (buds * mixPerMille * cookPerMille) / (budsPerBag * 1000000);
 	}
 
 	static int CLab_ComputeMixStage(bool started, float seconds, CLab_Settings settings)
@@ -667,6 +681,19 @@ class CLab_CocaTray: Bottle_Base
 	protected bool CLab_HasContent()
 	{
 		return m_CLab_BudCount > 0 || GetQuantity() > 0 || m_CLab_CookSeconds > 0;
+	}
+
+	//! The stack the previous scrape filled, while it has room and is still on this player or loose on the ground beside them
+	protected ItemBase CLab_GetOpenBag(PlayerBase player)
+	{
+		ItemBase bag = m_CLab_OpenBag;
+		if (!bag || bag.IsRuined() || bag.GetQuantity() >= bag.GetQuantityMax())
+			return null;
+		if (bag.GetHierarchyRootPlayer() == player)
+			return bag;
+		if (!bag.GetHierarchyParent() && vector.Distance(bag.GetPosition(), player.GetPosition()) <= OPEN_BAG_DISTANCE)
+			return bag;
+		return null;
 	}
 
 	protected void CLab_UpdateTimer(bool shouldRun)
