@@ -42,6 +42,14 @@ class CLab_Settings
 		return s_Instance;
 	}
 
+	//! Mission start: the file and the self-test appear on boot, not on the first tray use (spec S13).
+	//! IsDedicatedServer is reliable during load, unlike IsServer; offline play also loads, multiplayer clients do not.
+	static void Preload()
+	{
+		if (g_Game.IsDedicatedServer() || !g_Game.IsMultiplayer())
+			Get();
+	}
+
 	protected void LoadFromProfile()
 	{
 		string errorMessage;

@@ -133,6 +133,9 @@ modded class PluginRecipesManager
 		super.RegisterRecipies();
 		RegisterRecipe(new CLab_RecipeAddBud);
 		RegisterRecipe(new CLab_RecipeScrapePowder);
+
+		// The plugin is built once at mission start on the server too (pluginmanager.c:53): settings load there
+		CLab_Settings.Preload();
 	}
 
 	override protected void GenerateRecipeCache()
