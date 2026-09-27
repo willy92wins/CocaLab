@@ -58,6 +58,14 @@ class CLab_RecipeAddBud extends RecipeBase
 		return tray.CLab_CanAddBud();
 	}
 
+	//! One bud per cycle while the action is held (cacontinuouscraft.c:61-64): a stack of leaves goes in with one
+	//! action. The server checks the recipe again on every tick (actionworldcraft.c:89-110), so it stops when the
+	//! leaves run out or the tray is full.
+	override bool IsRepeatable()
+	{
+		return true;
+	}
+
 	override void Do(ItemBase ingredients[], PlayerBase player, array<ItemBase> results, float specialty_weight)
 	{
 		CLab_CocaTray tray = CLab_CocaTray.Cast(ingredients[1]);

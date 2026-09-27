@@ -126,6 +126,16 @@ class CfgVehicles
 			"liquid_3",
 			"powder"
 		};
+		class AnimationSources
+		{
+			// Cooking progress 0..1, set on the server; model.cfg drifts and hides the buds with it
+			class clab_cook
+			{
+				source="user";
+				animPeriod=0.0099999998;
+				initPhase=0;
+			};
+		};
 		class DamageSystem
 		{
 			class GlobalHealth

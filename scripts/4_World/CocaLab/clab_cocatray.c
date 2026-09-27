@@ -20,6 +20,8 @@ class CLab_CocaTray: Bottle_Base
 	static const float MAX_TICK_DELTA = 15.0;
 	//! Tolerance of CLab_ToPerMille, in thousandths
 	static const float PER_MILLE_EPSILON = 0.000045;
+	//! Animation source of the cooking progress (config.cpp AnimationSources, model.cfg bud drift and hide)
+	static const string ANIM_COOK = "clab_cook";
 
 	static const int MIX_NONE = 0;
 	static const int MIX_YELLOW = 1;
@@ -69,6 +71,8 @@ class CLab_CocaTray: Bottle_Base
 	protected ref Timer m_CLab_MixTimer;
 	//! The DP_CocaBag stack the last scrape filled. Not stored; a plain reference, so it reads null once the bag is gone
 	protected ItemBase m_CLab_OpenBag;
+	//! Last phase sent to ANIM_COOK, so the phase is only set when it changes
+	protected float m_CLab_CookPhase;
 
 	void CLab_CocaTray()
 	{
@@ -273,6 +277,14 @@ class CLab_CocaTray: Bottle_Base
 			line = string.Format(Widget.TranslateString("#STR_CLab_Desc_Buds"), m_CLab_BudCount, MAX_BUDS);
 		else
 			return false;
+
+		// Until the mix starts the tray has to be filled up (C4): show how much gasoline it holds
+		if (m_CLab_MixStage == MIX_NONE && m_CLab_CookStage == COOK_NONE && GetQuantity() > 0)
+		{
+			int gasoline = Math.Round(GetQuantity());
+			int capacity = Math.Round(GetQuantityMax());
+			line = line + "\n" + string.Format(Widget.TranslateString("#STR_CLab_Desc_Gasoline"), gasoline, capacity);
+		}
 
 		output = ConfigGetString("descriptionShort") + "\n" + line;
 		return true;
@@ -497,6 +509,17 @@ class CLab_CocaTray: Bottle_Base
 		if (dirty)
 			SetSynchDirty();
 
+		// The buds drift, sink and hide with the cooking progress (model.cfg). Set on the server only, as vanilla
+		// does for the fireplace (fireplacebase.c:761-806); the engine replicates the phase
+		float cookPhase = 0;
+		if (cooking)
+			cookPhase = Math.Clamp(m_CLab_CookSeconds / settings.CookDoneSeconds, 0, 1);
+		if (cookPhase != m_CLab_CookPhase)
+		{
+			m_CLab_CookPhase = cookPhase;
+			SetAnimationPhase(ANIM_COOK, cookPhase);
+		}
+
 		CLab_UpdateTimer(m_CLab_BudCount > 0 && !cooking && !ruined);
 
 		// A dedicated server renders nothing; clients update from OnVariablesSynchronized
@@ -518,7 +541,7 @@ class CLab_CocaTray: Bottle_Base
 			m_CLab_MixSeconds += dt;
 
 		CLab_RefreshState();
-		CLab_Log("tick dt=" + dt.ToString() + " mixSec=" + m_CLab_MixSeconds.ToString() + " stage=" + m_CLab_MixStage.ToString());
+		CLab_Log("tick dt=" + dt.ToString() + " mixSec=" + m_CLab_MixSeconds.ToString() + " stage=" + m_CLab_MixStage.ToString() + " q=" + GetQuantity().ToString());
 	}
 
 	//! Called by Cooking.CookWithEquipment on the server, dt = seconds between calls. No caller reads the result.
