@@ -74,51 +74,64 @@ class CLab_ActionEmptyTray: ActionEmptyBottleBase
 			tray.CLab_Reset();
 	}
 
-	//! The tray tilts as the hands raise it, from the start of the action on each side, and levels as they lower it, when
-	//! the pour loop ends. ActionEmptyBottleBase overrides the loop events without calling super
-	//! (actionemptybottlebase.c:70-78), so the *Server variants of ActionContinuousBase never run for it; the public
-	//! ones run on both sides
+	//! The tilt follows the hands of the pot animation set, measured with CocaLabDiag: they raise the tray for 0.87 s from
+	//! the start (LOOP_IN), pour, and lower it for 2.1 s from the end of the loop (LOOP_END2) until the action ends.
+	//! ActionEmptyBottleBase overrides the loop events without calling super (actionemptybottlebase.c:70-78), so the
+	//! *Server variants of ActionContinuousBase never run for it; the public ones run on both sides
 	override void OnStartServer(ActionData action_data)
 	{
 		super.OnStartServer(action_data);
 
-		CLab_SetTrayPouring(action_data, true);
+		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
+		if (tray)
+			tray.CLab_StartPour();
 	}
 
 	override void OnStartClient(ActionData action_data)
 	{
 		super.OnStartClient(action_data);
 
-		CLab_SetTrayPouring(action_data, true);
+		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
+		if (tray)
+			tray.CLab_StartPour();
 	}
 
 	override void OnEndAnimationLoop(ActionData action_data)
 	{
 		super.OnEndAnimationLoop(action_data);
 
-		CLab_SetTrayPouring(action_data, false);
+		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
+		if (tray)
+			tray.CLab_LowerPour();
 	}
 
-	//! An interrupt ends the action without the end of the loop (actionbase.c:764-785)
+	//! Every frame of the action on the client (actionmanagerclient.c:63)
+	override void OnUpdateClient(ActionData action_data)
+	{
+		super.OnUpdateClient(action_data);
+
+		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
+		if (tray)
+			tray.CLab_UpdatePour();
+	}
+
+	//! Also after an interrupt, which can skip the end of the loop (actionbase.c:764-785)
 	override void OnEndServer(ActionData action_data)
 	{
 		super.OnEndServer(action_data);
 
-		CLab_SetTrayPouring(action_data, false);
+		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
+		if (tray)
+			tray.CLab_EndPour();
 	}
 
 	override void OnEndClient(ActionData action_data)
 	{
 		super.OnEndClient(action_data);
 
-		CLab_SetTrayPouring(action_data, false);
-	}
-
-	protected void CLab_SetTrayPouring(ActionData action_data, bool pouring)
-	{
 		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
 		if (tray)
-			tray.CLab_SetPouring(pouring);
+			tray.CLab_EndPour();
 	}
 }
 
