@@ -31,8 +31,9 @@ class CLab_Settings
 	static const float MAX_MACERATION_SECONDS = 604800;
 	//! Longest done time of a cook
 	static const float MAX_COOK_SECONDS = 86400;
-	//! Shortest white and copper windows: a fire adds its 3 s tick in one step (fireplacebase.c:74-75), so a window of a
-	//! second or two could be stepped over
+	//! Shortest white and copper windows: a heat source adds its whole interval in one step, 3 s for a fire
+	//! (fireplacebase.c:74-75) and 10 s for the gas stove (portablegasstove.c:67, updateInterval in its config); a window
+	//! at least as long as the largest step is never stepped over
 	static const float MIN_COOK_WINDOW_SECONDS = 10;
 
 	protected static ref CLab_Settings s_Instance;
