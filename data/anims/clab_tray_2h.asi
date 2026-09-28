@@ -7,5 +7,9 @@ $animsetinstance {
    "ActionContinuous.EmptyVesselErc.Loop" "CocaLab/data/anims/clab_tray_pour_erc_loop.anm"
    "ActionContinuous.EmptyVesselErc.Out" "CocaLab/data/anims/clab_tray_pour_erc_out.anm"
    "ActionContinuous.EmptyVesselErc.Out2" "CocaLab/data/anims/clab_tray_pour_erc_empty.anm"
+   "ActionContinuous.EmptyVesselCro.In" "CocaLab/data/anims/clab_tray_pour_cro_in.anm"
+   "ActionContinuous.EmptyVesselCro.Loop" "CocaLab/data/anims/clab_tray_pour_cro_loop.anm"
+   "ActionContinuous.EmptyVesselCro.Out" "CocaLab/data/anims/clab_tray_pour_cro_out.anm"
+   "ActionContinuous.EmptyVesselCro.Out2" "CocaLab/data/anims/clab_tray_pour_cro_empty.anm"
   
  }

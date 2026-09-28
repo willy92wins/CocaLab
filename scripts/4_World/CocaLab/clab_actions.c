@@ -119,11 +119,11 @@ modded class ActionConstructor
 //! Held with both hands by the short ends, with the vanilla truck battery grip (dayzplayercfgbase.c:843): its wrists
 //! sit at X = +-29 cm of the item origin, the right one at +X, and the model lies along X, 47 cm long. The pot grip
 //! (:1026) put the hands inside the tray (B-005). The animation set is the pot's, whose pour replaces the bottle pour
-//! on "Empty tray" (player_main_2h_pot.asi:26-41), with its standing pour replaced in turn (data/anims/clab_tray_2h.asi).
-//! Continuous actions run without arm IK, so the pot's own pour keeps the hands on its 29 cm handles and the left one
-//! off the tray; the replacement keeps both wrists on the truck battery grip and tilts the tray in the hands
-//! (CocaLab_dev/tools/tray_pour_anim.py). The crouched pour is still the pot's. model.cfg only lifts the tray while
-//! held (CLab_CocaTray.ANIM_HOLD).
+//! on "Empty tray" (player_main_2h_pot.asi:26-41), with its standing and crouched pours replaced in turn
+//! (data/anims/clab_tray_2h.asi). Continuous actions run without arm IK, so the pot's own pour keeps the hands on its
+//! 29 cm handles and the left one off the tray; the replacement keeps both wrists on the truck battery grip and tilts
+//! the tray in the hands (CocaLab_dev/tools/tray_pour_anim.py). model.cfg only lifts the tray while held
+//! (CLab_CocaTray.ANIM_HOLD).
 modded class ModItemRegisterCallbacks
 {
 	override void RegisterTwoHanded(DayZPlayerType pType, DayzPlayerItemBehaviorCfg pBehavior)
