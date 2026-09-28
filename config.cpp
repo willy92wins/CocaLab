@@ -135,18 +135,19 @@ class CfgVehicles
 				animPeriod=0.0099999998;
 				initPhase=0;
 			};
-			// Held in hands 0 or 1, set on the server; model.cfg lifts the tray between the hands
+			// Held in hands 0 or 1, set on the server; model.cfg lifts the tray between the hands and raises its left end
 			class clab_hold
 			{
 				source="user";
 				animPeriod=0.0099999998;
 				initPhase=0;
 			};
-			// Pouring 0..1, set on the server during the pour loop of "Empty tray"; model.cfg tilts the tray about the right hand
+			// Pouring 0..1, set on the server during the pour loop of "Empty tray"; model.cfg tilts the tray about the right
+			// hand, fast enough to keep up with the player's pour
 			class clab_pour
 			{
 				source="user";
-				animPeriod=0.5;
+				animPeriod=0.2;
 				initPhase=0;
 			};
 		};
