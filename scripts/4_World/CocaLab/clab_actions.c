@@ -73,6 +73,38 @@ class CLab_ActionEmptyTray: ActionEmptyBottleBase
 		if (tray)
 			tray.CLab_Reset();
 	}
+
+	//! The tray tilts while the pour loop runs. ActionEmptyBottleBase overrides the loop events without calling super
+	//! (actionemptybottlebase.c:70-78), so the *Server variants of ActionContinuousBase never run for it; these run on
+	//! both sides, and the tray acts on the server only
+	override void OnStartAnimationLoop(ActionData action_data)
+	{
+		super.OnStartAnimationLoop(action_data);
+
+		CLab_SetTrayPouring(action_data, true);
+	}
+
+	override void OnEndAnimationLoop(ActionData action_data)
+	{
+		super.OnEndAnimationLoop(action_data);
+
+		CLab_SetTrayPouring(action_data, false);
+	}
+
+	//! An interrupt ends the action without the end of the loop (actionbase.c:764-785)
+	override void OnEndServer(ActionData action_data)
+	{
+		super.OnEndServer(action_data);
+
+		CLab_SetTrayPouring(action_data, false);
+	}
+
+	protected void CLab_SetTrayPouring(ActionData action_data, bool pouring)
+	{
+		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
+		if (tray)
+			tray.CLab_SetPouring(pouring);
+	}
 }
 
 //! A pour into the tray ends when the client's side of the transfer finishes, which can leave it just short of full
@@ -116,9 +148,11 @@ modded class ActionConstructor
 }
 
 //! Held with both hands by the short ends, with the vanilla truck battery grip (dayzplayercfgbase.c:843): its wrists
-//! sit at X = +-29 cm of the item origin and the model lies along X, 43 cm long. The pot grip (:1026) put the hands
-//! inside the tray (B-005). The pot animation set stays: its pour replaces the bottle pour, cap and all, on
-//! "Empty tray" (player_main_2h_pot.asi:26-41), as vanilla pairs one item's set with another's grip (:1000).
+//! sit at X = +-29 cm of the item origin, the right one at +X, and the model lies along X, 47 cm long. The pot grip
+//! (:1026) put the hands inside the tray (B-005). The pot animation set stays: its pour replaces the bottle pour, cap
+//! and all, on "Empty tray" (player_main_2h_pot.asi:26-41), as vanilla pairs one item's set with another's grip
+//! (:1000). Both poses are finished in the model, not in the grip: model.cfg lifts the tray while held and tilts it
+//! while it pours (CLab_CocaTray.ANIM_HOLD, ANIM_POUR).
 modded class ModItemRegisterCallbacks
 {
 	override void RegisterTwoHanded(DayZPlayerType pType, DayzPlayerItemBehaviorCfg pBehavior)

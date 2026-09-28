@@ -135,6 +135,20 @@ class CfgVehicles
 				animPeriod=0.0099999998;
 				initPhase=0;
 			};
+			// Held in hands 0 or 1, set on the server; model.cfg lifts the tray between the hands
+			class clab_hold
+			{
+				source="user";
+				animPeriod=0.0099999998;
+				initPhase=0;
+			};
+			// Pouring 0..1, set on the server during the pour loop of "Empty tray"; model.cfg tilts the tray about the right hand
+			class clab_pour
+			{
+				source="user";
+				animPeriod=0.5;
+				initPhase=0;
+			};
 		};
 		class DamageSystem
 		{

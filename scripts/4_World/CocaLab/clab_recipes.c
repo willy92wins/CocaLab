@@ -1,5 +1,6 @@
 // ==========================================================================
-// Recipes of the maceration tray, plus the removal of the direct DrugsPLUS coca bag recipe.
+// Recipes of the maceration tray, the removal of the direct DrugsPLUS coca bag recipe, and the tray kept out of the
+// vanilla torch fuel recipe.
 // Every Init() field is set explicitly: RecipeBase does not initialize them (recipebase.c:67-86),
 // and a 0 left in place rejects the quantity (:441) or sets the ingredient health to 0 (:390-394).
 // The manager sorts the two items to the ingredient order before CanDo/Do
@@ -164,5 +165,21 @@ modded class PluginRecipesManager
 		// Runs after every RegisterRecipies override, whatever the mod load order
 		UnregisterRecipe("DP_CraftCocaBag");
 		super.GenerateRecipeCache();
+	}
+}
+
+//! The only vanilla recipe that takes any Bottle_Base (upgradetorchwithliquidfuel.c:26): it would soak a torch with the
+//! tray's gasoline (torch.c:321-324). Gasoline leaves the tray only by emptying it or cooking (C5), and a started cook
+//! needs none (R-a). The other liquid recipes list their containers by class and never match the tray.
+modded class UpgradeTorchWithLiquidFuel
+{
+	override bool CanDo(ItemBase ingredients[], PlayerBase player)
+	{
+		ItemBase first = ingredients[0];
+		ItemBase second = ingredients[1];
+		if (CLab_CocaTray.Cast(first) || CLab_CocaTray.Cast(second))
+			return false;
+
+		return super.CanDo(ingredients, player);
 	}
 }

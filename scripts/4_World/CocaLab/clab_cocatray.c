@@ -22,6 +22,11 @@ class CLab_CocaTray: Bottle_Base
 	static const float PER_MILLE_EPSILON = 0.000045;
 	//! Animation source of the buds breaking up (config.cpp AnimationSources, model.cfg bud drift and hide)
 	static const string ANIM_BUDS = "clab_buds";
+	//! Animation sources of the tray held in hands and of pouring it out (model.cfg clab_body lift, roll and pitch)
+	static const string ANIM_HOLD = "clab_hold";
+	static const string ANIM_POUR = "clab_pour";
+	//! Stored seconds are capped here on load: every stage threshold lies far below, so a larger value reads the same
+	static const float MAX_STORED_SECONDS = 10000000;
 	//! A pour that ends this close to full, as a fraction of the capacity, is finished from the same container (B-008)
 	static const float TOP_UP_FRACTION = 0.1;
 
@@ -74,6 +79,8 @@ class CLab_CocaTray: Bottle_Base
 	protected ItemBase m_CLab_OpenBag;
 	//! Last phase sent to ANIM_BUDS, so the phase is only set when it changes
 	protected float m_CLab_BudPhase;
+	//! Tick time of the last cook step that added time; -1 before the first. Not stored
+	protected float m_CLab_LastCookTime = -1;
 
 	void CLab_CocaTray()
 	{
@@ -135,12 +142,15 @@ class CLab_CocaTray: Bottle_Base
 		return 0;
 	}
 
-	//! Visuals only: during client load IsServer() can still be true, and a new tray has no state to refresh
+	//! Visuals only: during client load IsServer() can still be true, and a new tray has no state to refresh. A tray
+	//! created straight in hands gets its hold pose here; setting it on a client in load agrees with the server
 	override void EEInit()
 	{
 		super.EEInit();
 
 		CLab_UpdateVisuals();
+		if (g_Game.IsServer())
+			CLab_RefreshHeld();
 	}
 
 	override void AfterStoreLoad()
@@ -150,6 +160,7 @@ class CLab_CocaTray: Bottle_Base
 		if (!g_Game.IsServer())
 			return;
 
+		CLab_RefreshHeld();
 		CLab_Log("loaded buds=" + m_CLab_BudCount.ToString() + " started=" + m_CLab_MixStarted.ToString() + " mixSec=" + m_CLab_MixSeconds.ToString() + " cookSec=" + m_CLab_CookSeconds.ToString() + " scraped=" + m_CLab_BagsScraped.ToString());
 
 		// A crash between ruin and save leaves a ruined tray with content: it is lost now (B5)
@@ -179,13 +190,17 @@ class CLab_CocaTray: Bottle_Base
 	}
 
 	//! The gas stove drops its equipment reference before stopping the effects (portablegasstove.c:97-110), so the
-	//! tray stops its own on any move; the next cooking tick restores them if it still cooks
+	//! tray stops its own on any move; the next cooking tick restores them if it still cooks. The hold pose follows
+	//! the hands
 	override void EEItemLocationChanged(notnull InventoryLocation oldLoc, notnull InventoryLocation newLoc)
 	{
 		super.EEItemLocationChanged(oldLoc, newLoc);
 
-		if (g_Game.IsServer())
-			CLab_StopCookingEffects();
+		if (!g_Game.IsServer())
+			return;
+
+		CLab_StopCookingEffects();
+		CLab_SetHeld(newLoc.GetType() == InventoryLocationType.HANDS);
 	}
 
 	//! Server side, fired by SetQuantity except while loading from storage (itembase.c:3398-3404)
@@ -255,8 +270,8 @@ class CLab_CocaTray: Bottle_Base
 
 		m_CLab_BudCount = (int)Math.Clamp(budCount, 0, MAX_BUDS);
 		m_CLab_MixStarted = mixStarted;
-		m_CLab_MixSeconds = Math.Max(mixSeconds, 0);
-		m_CLab_CookSeconds = Math.Max(cookSeconds, 0);
+		m_CLab_MixSeconds = CLab_SanitizeSeconds(mixSeconds);
+		m_CLab_CookSeconds = CLab_SanitizeSeconds(cookSeconds);
 		m_CLab_MixStage = (int)Math.Clamp(mixStage, MIX_NONE, MIX_GREEN);
 		m_CLab_BagsScraped = (int)Math.Clamp(bagsScraped, 0, MAX_BAGS);
 		return true;
@@ -398,6 +413,18 @@ class CLab_CocaTray: Bottle_Base
 
 		Liquid.Transfer(source, this, missing);
 		CLab_Log("pour topped up missing=" + missing.ToString() + " q=" + GetQuantity().ToString());
+	}
+
+	//! Server, from "Empty tray": tilted about the right hand while the pour loop runs, level again when it ends
+	void CLab_SetPouring(bool pouring)
+	{
+		if (!g_Game.IsServer())
+			return;
+
+		float phase = 0;
+		if (pouring)
+			phase = 1;
+		SetAnimationPhase(ANIM_POUR, phase);
 	}
 
 	//! The leaf is created first and the bud removed only if that worked; a new DP_CocaLeaves starts at 2 (fruits/config.cpp:32)
@@ -597,6 +624,15 @@ class CLab_CocaTray: Bottle_Base
 			return 0;
 		}
 
+		// A cooling fire cooks its equipment and its direct slots in the same tick (fireplacebase.c:2043-2066), and a
+		// tray moved between two fires would get the ticks of both: only the time since the last step counts
+		float now = g_Game.GetTickTime();
+		if (m_CLab_LastCookTime >= 0)
+			dt = Math.Min(dt, now - m_CLab_LastCookTime);
+		if (dt <= 0)
+			return 0;
+		m_CLab_LastCookTime = now;
+
 		if (!started)
 		{
 			// Last mix stage before it freezes for good (R-c)
@@ -727,9 +763,37 @@ class CLab_CocaTray: Bottle_Base
 		return COOK_BURNT;
 	}
 
+	//! Stored seconds from a damaged file: NaN and negatives read as 0, anything past MAX_STORED_SECONDS is capped
+	static float CLab_SanitizeSeconds(float seconds)
+	{
+		if (!(seconds >= 0))
+			return 0;
+
+		return Math.Min(seconds, MAX_STORED_SECONDS);
+	}
+
 	// ----------------------------------------------------------------------
 	// Helpers
 	// ----------------------------------------------------------------------
+
+	//! Server: the tray rides 1 cm higher between the hands, and a tray leaving the hands is never left tilted
+	protected void CLab_SetHeld(bool held)
+	{
+		float phase = 0;
+		if (held)
+			phase = 1;
+		SetAnimationPhase(ANIM_HOLD, phase);
+		if (!held)
+			SetAnimationPhase(ANIM_POUR, 0);
+	}
+
+	//! Server: hold pose from where the tray is now, for a tray created or loaded in hands
+	protected void CLab_RefreshHeld()
+	{
+		InventoryLocation location = new InventoryLocation();
+		bool held = GetInventory().GetCurrentInventoryLocation(location) && location.GetType() == InventoryLocationType.HANDS;
+		CLab_SetHeld(held);
+	}
 
 	protected bool CLab_IsFull(CLab_Settings settings)
 	{

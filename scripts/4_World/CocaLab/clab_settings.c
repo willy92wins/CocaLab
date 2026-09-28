@@ -29,6 +29,11 @@ class CLab_Settings
 	static const string FILE_PATH = "$profile:CocaLab/CocaLab.json";
 	static const string LOG_TAG = "[CocaLab] ";
 	static const float MAX_MACERATION_SECONDS = 604800;
+	//! Longest done time of a cook
+	static const float MAX_COOK_SECONDS = 86400;
+	//! Shortest white and copper windows: a fire adds its 3 s tick in one step (fireplacebase.c:74-75), so a window of a
+	//! second or two could be stepped over
+	static const float MIN_COOK_WINDOW_SECONDS = 10;
 
 	protected static ref CLab_Settings s_Instance;
 
@@ -108,9 +113,9 @@ class CLab_Settings
 		MacerationGreenSeconds = ClampFloatField("MacerationGreenSeconds", MacerationGreenSeconds, 10, MAX_MACERATION_SECONDS);
 		// The tray tops out at 200 degrees (varTemperatureMax in config.cpp)
 		CookMinTemperature = ClampFloatField("CookMinTemperature", CookMinTemperature, 30, 190);
-		CookDoneSeconds = RaiseFloatField("CookDoneSeconds", CookDoneSeconds, 10);
-		CookCopperSeconds = RaiseFloatField("CookCopperSeconds", CookCopperSeconds, CookDoneSeconds + 1);
-		CookBurntSeconds = RaiseFloatField("CookBurntSeconds", CookBurntSeconds, CookCopperSeconds + 1);
+		CookDoneSeconds = ClampFloatField("CookDoneSeconds", CookDoneSeconds, 10, MAX_COOK_SECONDS);
+		CookCopperSeconds = ClampFloatField("CookCopperSeconds", CookCopperSeconds, CookDoneSeconds + MIN_COOK_WINDOW_SECONDS, MAX_COOK_SECONDS + MIN_COOK_WINDOW_SECONDS);
+		CookBurntSeconds = ClampFloatField("CookBurntSeconds", CookBurntSeconds, CookCopperSeconds + MIN_COOK_WINDOW_SECONDS, MAX_COOK_SECONDS + 2 * MIN_COOK_WINDOW_SECONDS);
 		YieldYellow = TruncateYieldField("YieldYellow", YieldYellow);
 		YieldWhitish = TruncateYieldField("YieldWhitish", YieldWhitish);
 		YieldGreen = TruncateYieldField("YieldGreen", YieldGreen);
@@ -140,14 +145,6 @@ class CLab_Settings
 		return clamped;
 	}
 
-	protected float RaiseFloatField(string field, float value, float minValue)
-	{
-		if (value >= minValue)
-			return value;
-		Print(LOG_TAG + field + " = " + value.ToString() + " is below its minimum, set to " + minValue.ToString());
-		return minValue;
-	}
-
 	//! Yields are 0-1 with at most 3 decimals; extra decimals are truncated, so no rounding ever adds a bag (F1)
 	protected float TruncateYieldField(string field, float value)
 	{
@@ -161,7 +158,7 @@ class CLab_Settings
 	}
 
 	// ----------------------------------------------------------------------
-	// Self-test of the yield oracle (feature spec §7), run at load with DebugLog.
+	// Self-test of the yield oracle (feature spec §7) and of the stored seconds guard, run at load with DebugLog.
 	// Every row is evaluated with the defaults except the fields it overrides.
 	// ----------------------------------------------------------------------
 
@@ -202,6 +199,11 @@ class CLab_Settings
 		failures += CheckPerMille(0.7009999, 700);
 		cases += 7;
 
+		failures += CheckSeconds(-5, 0);
+		failures += CheckSeconds(90.5, 90.5);
+		failures += CheckSeconds(CLab_CocaTray.MAX_STORED_SECONDS * 1000, CLab_CocaTray.MAX_STORED_SECONDS);
+		cases += 3;
+
 		if (failures == 0)
 			Print(LOG_TAG + "CLab selftest PASS (" + cases.ToString() + " cases)");
 		else
@@ -236,6 +238,17 @@ class CLab_Settings
 			return 0;
 
 		Print(LOG_TAG + "CLab selftest FAIL per-mille " + value.ToString() + ": got " + perMille.ToString() + ", expected " + expected.ToString());
+		return 1;
+	}
+
+	//! Returns 1 on failure.
+	protected int CheckSeconds(float stored, float expected)
+	{
+		float seconds = CLab_CocaTray.CLab_SanitizeSeconds(stored);
+		if (seconds == expected)
+			return 0;
+
+		Print(LOG_TAG + "CLab selftest FAIL stored seconds " + stored.ToString() + ": got " + seconds.ToString() + ", expected " + expected.ToString());
 		return 1;
 	}
 }
