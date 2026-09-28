@@ -53,7 +53,15 @@ class CfgMods
 };
 class CfgVehicles
 {
+	class Inventory_Base;
 	class Bottle_Base;
+	// DrugsPLUS coca leaves stack to 12, a full tray (2 in DrugsPLUS/fruits/config.cpp). A harvest keeps its yield:
+	// AgricultureCore sets each harvested stack to the DrugsPLUS Coca CropCount, 2 by default
+	class DP_CocaLeaves: Inventory_Base
+	{
+		varQuantityMax=12;
+		varStackMax=12;
+	};
 	class CLab_CocaTray: Bottle_Base
 	{
 		scope=2;
@@ -95,9 +103,9 @@ class CfgVehicles
 		};
 		hiddenSelectionsTextures[]=
 		{
-			"#(argb,8,8,3)color(0.62,0.42,0.06,0.7,CA)",
-			"#(argb,8,8,3)color(0.62,0.42,0.06,0.7,CA)",
-			"#(argb,8,8,3)color(0.62,0.42,0.06,0.7,CA)",
+			"CocaLab\data\clab_liquid_yellow_ca.paa",
+			"CocaLab\data\clab_liquid_yellow_ca.paa",
+			"CocaLab\data\clab_liquid_yellow_ca.paa",
 			"CocaLab\data\clab_powder_white_co.paa"
 		};
 		hiddenSelectionsMaterials[]=

@@ -159,7 +159,8 @@ class CLab_Settings
 	}
 
 	// ----------------------------------------------------------------------
-	// Self-test of the yield oracle (feature spec §7) and of the stored seconds guard, run at load with DebugLog.
+	// Self-test of the yield oracle (feature spec §7), of the stored seconds guard and of the liquid level, run at load
+	// with DebugLog.
 	// Every row is evaluated with the defaults except the fields it overrides.
 	// ----------------------------------------------------------------------
 
@@ -204,6 +205,16 @@ class CLab_Settings
 		failures += CheckSeconds(90.5, 90.5);
 		failures += CheckSeconds(CLab_CocaTray.MAX_STORED_SECONDS * 1000, CLab_CocaTray.MAX_STORED_SECONDS);
 		cases += 3;
+
+		// A cook under way never reads empty: the last step before the done time as clients and the server see it (B-011)
+		failures += CheckLevel(0, CLab_CocaTray.COOK_COOKING, 1);
+		failures += CheckLevel(0.0335574, CLab_CocaTray.COOK_COOKING, 1);
+		failures += CheckLevel(166.7, CLab_CocaTray.COOK_COOKING, 1);
+		failures += CheckLevel(500, CLab_CocaTray.COOK_NONE, 2);
+		failures += CheckLevel(1000, CLab_CocaTray.COOK_NONE, 3);
+		failures += CheckLevel(0, CLab_CocaTray.COOK_NONE, 0);
+		failures += CheckLevel(0, CLab_CocaTray.COOK_WHITE, 0);
+		cases += 7;
 
 		if (failures == 0)
 			Print(LOG_TAG + "CLab selftest PASS (" + cases.ToString() + " cases)");
@@ -250,6 +261,17 @@ class CLab_Settings
 			return 0;
 
 		Print(LOG_TAG + "CLab selftest FAIL stored seconds " + stored.ToString() + ": got " + seconds.ToString() + ", expected " + expected.ToString());
+		return 1;
+	}
+
+	//! Returns 1 on failure. The quantity is out of 1000, the tray's capacity.
+	protected int CheckLevel(float quantity, int cookStage, int expected)
+	{
+		int level = CLab_CocaTray.CLab_ComputeLiquidLevel(quantity, 1000, cookStage);
+		if (level == expected)
+			return 0;
+
+		Print(LOG_TAG + "CLab selftest FAIL liquid level q=" + quantity.ToString() + " cook=" + cookStage.ToString() + ": got " + level.ToString() + ", expected " + expected.ToString());
 		return 1;
 	}
 }

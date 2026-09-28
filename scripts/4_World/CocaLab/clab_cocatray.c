@@ -54,9 +54,9 @@ class CLab_CocaTray: Bottle_Base
 	static const int TEX_FIRST_LIQUID = 0;
 	static const int TEX_POWDER = 3;
 
-	static const string TEX_LIQUID_YELLOW = "#(argb,8,8,3)color(0.62,0.42,0.06,0.7,CA)";
-	static const string TEX_LIQUID_WHITISH = "#(argb,8,8,3)color(0.80,0.78,0.68,0.88,CA)";
-	static const string TEX_LIQUID_GREEN = "#(argb,8,8,3)color(0.22,0.36,0.06,0.8,CA)";
+	static const string TEX_LIQUID_YELLOW = "CocaLab\\data\\clab_liquid_yellow_ca.paa";
+	static const string TEX_LIQUID_WHITISH = "CocaLab\\data\\clab_liquid_whitish_ca.paa";
+	static const string TEX_LIQUID_GREEN = "CocaLab\\data\\clab_liquid_green_ca.paa";
 	static const string TEX_POWDER_WHITE = "CocaLab\\data\\clab_powder_white_co.paa";
 	static const string TEX_POWDER_COPPER = "CocaLab\\data\\clab_powder_copper_co.paa";
 	static const string TEX_POWDER_BURNT = "CocaLab\\data\\clab_powder_burnt_co.paa";
@@ -657,11 +657,7 @@ class CLab_CocaTray: Bottle_Base
 		bool visible;
 		int i;
 
-		int level = 0;
-		float quantity = GetQuantity();
-		float quantityMax = GetQuantityMax();
-		if (quantity > 0 && quantityMax > 0)
-			level = (int)Math.Clamp(Math.Ceil(quantity / quantityMax * LIQUID_LEVELS), 1, LIQUID_LEVELS);
+		int level = CLab_ComputeLiquidLevel(GetQuantity(), GetQuantityMax(), m_CLab_CookStage);
 
 		// Every input below, packed: level 0-3, mix 0-3, cook 0-4, buds 0-12
 		if (g_Game.IsDedicatedServer())
@@ -740,6 +736,20 @@ class CLab_CocaTray: Bottle_Base
 		int mixPerMille = CLab_ToPerMille(mixYield);
 		int cookPerMille = CLab_ToPerMille(cookYield);
 		return (buds * mixPerMille * cookPerMille) / (budsPerBag * 1000000);
+	}
+
+	//! Liquid level shown, 0 (none) to LIQUID_LEVELS. A cook under way shows at least the lowest level: its last step
+	//! before the done time can leave a few thousandths, which clients read as 0 because the quantity travels with one
+	//! decimal (itembase.c:254, entityai.c:2876), and the powder only shows from COOK_WHITE (B-011)
+	static int CLab_ComputeLiquidLevel(float quantity, float quantityMax, int cookStage)
+	{
+		int level = 0;
+		if (quantity > 0 && quantityMax > 0)
+			level = (int)Math.Clamp(Math.Ceil(quantity / quantityMax * LIQUID_LEVELS), 1, LIQUID_LEVELS);
+		if (level == 0 && cookStage == COOK_COOKING)
+			level = 1;
+
+		return level;
 	}
 
 	static int CLab_ComputeMixStage(bool started, float seconds, CLab_Settings settings)
