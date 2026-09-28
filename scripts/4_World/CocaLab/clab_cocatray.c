@@ -22,12 +22,9 @@ class CLab_CocaTray: Bottle_Base
 	static const float PER_MILLE_EPSILON = 0.000045;
 	//! Animation source of the buds breaking up (config.cpp AnimationSources, model.cfg bud drift and hide)
 	static const string ANIM_BUDS = "clab_buds";
-	//! Animation sources of the tray held in hands and of pouring it out (model.cfg clab_body lift, roll and pitch)
+	//! Animation source of the tray held in hands (model.cfg clab_body lift and shift). Pouring tilts the tray in the
+	//! player's own pour animations (data/anims), not in the model
 	static const string ANIM_HOLD = "clab_hold";
-	static const string ANIM_POUR = "clab_pour";
-	//! Seconds the hands take to lower the tray after the pour loop of the pot animation set (LOOP_END2), measured with
-	//! CocaLabDiag on client and server; raising it takes the clab_pour animPeriod in config.cpp
-	static const float POUR_LOWER_SECONDS = 2.1;
 	//! Stored seconds are capped here on load: every stage threshold lies far below, so a larger value reads the same
 	static const float MAX_STORED_SECONDS = 10000000;
 	//! A pour that ends this close to full, as a fraction of the capacity, is finished from the same container (B-008)
@@ -86,8 +83,6 @@ class CLab_CocaTray: Bottle_Base
 	protected float m_CLab_LastCookTime = -1;
 	//! Dedicated server: visible state last written by CLab_UpdateVisuals, so unchanged visuals are not written again
 	protected int m_CLab_VisualKey = -1;
-	//! Client: tick time the hands started lowering the poured tray, -1 when they are not. Not stored
-	protected float m_CLab_LowerStart = -1;
 
 	void CLab_CocaTray()
 	{
@@ -423,45 +418,6 @@ class CLab_CocaTray: Bottle_Base
 
 		Liquid.Transfer(source, this, missing);
 		CLab_Log("pour topped up missing=" + missing.ToString() + " q=" + GetQuantity().ToString());
-	}
-
-	//! "Empty tray" starts, on both sides: the tray tilts about the right hand while the hands raise it (clab_pour
-	//! animPeriod). The local player sees it with its own animation, without the network delay
-	void CLab_StartPour()
-	{
-		m_CLab_LowerStart = -1;
-		SetAnimationPhase(ANIM_POUR, 1);
-	}
-
-	//! The pour loop ends and the hands lower the tray: the local client follows them in CLab_UpdatePour. The server
-	//! writes nothing until the end, so the owner's client has a single writer of the phase meanwhile
-	void CLab_LowerPour()
-	{
-		if (!g_Game.IsDedicatedServer())
-			m_CLab_LowerStart = g_Game.GetTickTime();
-	}
-
-	//! Client, every frame of "Empty tray": while the hands lower the tray, the tilt goes down with them
-	void CLab_UpdatePour()
-	{
-		if (m_CLab_LowerStart < 0)
-			return;
-
-		float phase = 1 - (g_Game.GetTickTime() - m_CLab_LowerStart) / POUR_LOWER_SECONDS;
-		if (phase <= 0)
-		{
-			phase = 0;
-			m_CLab_LowerStart = -1;
-		}
-		SetAnimationPhase(ANIM_POUR, phase);
-	}
-
-	//! "Empty tray" ends, is interrupted or the tray leaves the hands: level, on both sides. Other players see the tray
-	//! level from here
-	void CLab_EndPour()
-	{
-		m_CLab_LowerStart = -1;
-		SetAnimationPhase(ANIM_POUR, 0);
 	}
 
 	//! The leaf is created first and the bud removed only if that worked; a new DP_CocaLeaves starts at 2 (fruits/config.cpp:32)
@@ -823,15 +779,13 @@ class CLab_CocaTray: Bottle_Base
 	// Helpers
 	// ----------------------------------------------------------------------
 
-	//! Server: the tray rides 1 cm higher between the hands, and a tray leaving the hands is never left tilted
+	//! Server: the tray rides 1 cm higher between the hands
 	protected void CLab_SetHeld(bool held)
 	{
 		float phase = 0;
 		if (held)
 			phase = 1;
 		SetAnimationPhase(ANIM_HOLD, phase);
-		if (!held)
-			CLab_EndPour();
 	}
 
 	//! Server: hold pose from where the tray is now, for a tray created or loaded in hands

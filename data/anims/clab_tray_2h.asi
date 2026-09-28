@@ -1,0 +1,11 @@
+$animsetinstance {
+ #template "{F0C651DE8E24A5DE}DZ/anims/workspaces/player/player_main/player_main.ast"
+ #nparents 1
+ #parent "{80F73F156665CE40}DZ/anims/workspaces/player/player_main/props/player_main_2h_pot.asi"
+ $animations {
+   "ActionContinuous.EmptyVesselErc.In" "CocaLab/data/anims/clab_tray_pour_erc_in.anm"
+   "ActionContinuous.EmptyVesselErc.Loop" "CocaLab/data/anims/clab_tray_pour_erc_loop.anm"
+   "ActionContinuous.EmptyVesselErc.Out" "CocaLab/data/anims/clab_tray_pour_erc_out.anm"
+   "ActionContinuous.EmptyVesselErc.Out2" "CocaLab/data/anims/clab_tray_pour_erc_empty.anm"
+  
+ }

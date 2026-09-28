@@ -74,65 +74,6 @@ class CLab_ActionEmptyTray: ActionEmptyBottleBase
 			tray.CLab_Reset();
 	}
 
-	//! The tilt follows the hands of the pot animation set, measured with CocaLabDiag: they raise the tray for 0.87 s from
-	//! the start (LOOP_IN), pour, and lower it for 2.1 s from the end of the loop (LOOP_END2) until the action ends.
-	//! ActionEmptyBottleBase overrides the loop events without calling super (actionemptybottlebase.c:70-78), so the
-	//! *Server variants of ActionContinuousBase never run for it; the public ones run on both sides
-	override void OnStartServer(ActionData action_data)
-	{
-		super.OnStartServer(action_data);
-
-		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
-		if (tray)
-			tray.CLab_StartPour();
-	}
-
-	override void OnStartClient(ActionData action_data)
-	{
-		super.OnStartClient(action_data);
-
-		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
-		if (tray)
-			tray.CLab_StartPour();
-	}
-
-	override void OnEndAnimationLoop(ActionData action_data)
-	{
-		super.OnEndAnimationLoop(action_data);
-
-		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
-		if (tray)
-			tray.CLab_LowerPour();
-	}
-
-	//! Every frame of the action on the client (actionmanagerclient.c:63)
-	override void OnUpdateClient(ActionData action_data)
-	{
-		super.OnUpdateClient(action_data);
-
-		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
-		if (tray)
-			tray.CLab_UpdatePour();
-	}
-
-	//! Also after an interrupt, which can skip the end of the loop (actionbase.c:764-785)
-	override void OnEndServer(ActionData action_data)
-	{
-		super.OnEndServer(action_data);
-
-		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
-		if (tray)
-			tray.CLab_EndPour();
-	}
-
-	override void OnEndClient(ActionData action_data)
-	{
-		super.OnEndClient(action_data);
-
-		CLab_CocaTray tray = CLab_CocaTray.Cast(action_data.m_MainItem);
-		if (tray)
-			tray.CLab_EndPour();
-	}
 }
 
 //! A pour into the tray ends when the client's side of the transfer finishes, which can leave it just short of full
@@ -177,15 +118,17 @@ modded class ActionConstructor
 
 //! Held with both hands by the short ends, with the vanilla truck battery grip (dayzplayercfgbase.c:843): its wrists
 //! sit at X = +-29 cm of the item origin, the right one at +X, and the model lies along X, 47 cm long. The pot grip
-//! (:1026) put the hands inside the tray (B-005). The pot animation set stays: its pour replaces the bottle pour, cap
-//! and all, on "Empty tray" (player_main_2h_pot.asi:26-41), as vanilla pairs one item's set with another's grip
-//! (:1000). Both poses are finished in the model, not in the grip: model.cfg lifts the tray while held and tilts it
-//! while it pours (CLab_CocaTray.ANIM_HOLD, ANIM_POUR).
+//! (:1026) put the hands inside the tray (B-005). The animation set is the pot's, whose pour replaces the bottle pour
+//! on "Empty tray" (player_main_2h_pot.asi:26-41), with its standing pour replaced in turn (data/anims/clab_tray_2h.asi).
+//! Continuous actions run without arm IK, so the pot's own pour keeps the hands on its 29 cm handles and the left one
+//! off the tray; the replacement keeps both wrists on the truck battery grip and tilts the tray in the hands
+//! (CocaLab_dev/tools/tray_pour_anim.py). The crouched pour is still the pot's. model.cfg only lifts the tray while
+//! held (CLab_CocaTray.ANIM_HOLD).
 modded class ModItemRegisterCallbacks
 {
 	override void RegisterTwoHanded(DayZPlayerType pType, DayzPlayerItemBehaviorCfg pBehavior)
 	{
 		super.RegisterTwoHanded(pType, pBehavior);
-		pType.AddItemInHandsProfileIK("CLab_CocaTray", "dz/anims/workspaces/player/player_main/props/player_main_2h_pot.asi", pBehavior, "dz/anims/anm/player/ik/vehicles/BatteryTruck.anm");
+		pType.AddItemInHandsProfileIK("CLab_CocaTray", "CocaLab/data/anims/clab_tray_2h.asi", pBehavior, "dz/anims/anm/player/ik/vehicles/BatteryTruck.anm");
 	}
 }

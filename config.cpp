@@ -142,14 +142,6 @@ class CfgVehicles
 				animPeriod=0.0099999998;
 				initPhase=0;
 			};
-			// Pouring 0..1 during "Empty tray"; model.cfg tilts the tray about the right hand. The period is the time the hands
-			// take to raise it (LOOP_IN of the pot animation set, 0.87 s measured); the client lowers it frame by frame
-			class clab_pour
-			{
-				source="user";
-				animPeriod=0.87;
-				initPhase=0;
-			};
 		};
 		class DamageSystem
 		{
