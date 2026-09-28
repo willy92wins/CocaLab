@@ -147,7 +147,7 @@ class CfgVehicles
 			class clab_pour
 			{
 				source="user";
-				animPeriod=0.2;
+				animPeriod=0.1;
 				initPhase=0;
 			};
 		};
