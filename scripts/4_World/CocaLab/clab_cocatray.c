@@ -420,12 +420,11 @@ class CLab_CocaTray: Bottle_Base
 		CLab_Log("pour topped up missing=" + missing.ToString() + " q=" + GetQuantity().ToString());
 	}
 
-	//! Server, from "Empty tray": tilted about the right hand while the pour loop runs, level again when it ends
+	//! From "Empty tray", on both sides: tilted about the right hand while the hands raise and hold it, level again as
+	//! they lower it. The local player sees it with its own animation, without the network delay; the server's phase
+	//! reaches everyone else
 	void CLab_SetPouring(bool pouring)
 	{
-		if (!g_Game.IsServer())
-			return;
-
 		float phase = 0;
 		if (pouring)
 			phase = 1;

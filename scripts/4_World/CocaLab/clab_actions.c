@@ -74,12 +74,20 @@ class CLab_ActionEmptyTray: ActionEmptyBottleBase
 			tray.CLab_Reset();
 	}
 
-	//! The tray tilts while the pour loop runs. ActionEmptyBottleBase overrides the loop events without calling super
-	//! (actionemptybottlebase.c:70-78), so the *Server variants of ActionContinuousBase never run for it; these run on
-	//! both sides, and the tray acts on the server only
-	override void OnStartAnimationLoop(ActionData action_data)
+	//! The tray tilts as the hands raise it, from the start of the action on each side, and levels as they lower it, when
+	//! the pour loop ends. ActionEmptyBottleBase overrides the loop events without calling super
+	//! (actionemptybottlebase.c:70-78), so the *Server variants of ActionContinuousBase never run for it; the public
+	//! ones run on both sides
+	override void OnStartServer(ActionData action_data)
 	{
-		super.OnStartAnimationLoop(action_data);
+		super.OnStartServer(action_data);
+
+		CLab_SetTrayPouring(action_data, true);
+	}
+
+	override void OnStartClient(ActionData action_data)
+	{
+		super.OnStartClient(action_data);
 
 		CLab_SetTrayPouring(action_data, true);
 	}
@@ -95,6 +103,13 @@ class CLab_ActionEmptyTray: ActionEmptyBottleBase
 	override void OnEndServer(ActionData action_data)
 	{
 		super.OnEndServer(action_data);
+
+		CLab_SetTrayPouring(action_data, false);
+	}
+
+	override void OnEndClient(ActionData action_data)
+	{
+		super.OnEndClient(action_data);
 
 		CLab_SetTrayPouring(action_data, false);
 	}
