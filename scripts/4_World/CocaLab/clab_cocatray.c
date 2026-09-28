@@ -81,6 +81,8 @@ class CLab_CocaTray: Bottle_Base
 	protected float m_CLab_BudPhase;
 	//! Tick time of the last cook step that added time; -1 before the first. Not stored
 	protected float m_CLab_LastCookTime = -1;
+	//! Dedicated server: visible state last written by CLab_UpdateVisuals, so unchanged visuals are not written again
+	protected int m_CLab_VisualKey = -1;
 
 	void CLab_CocaTray()
 	{
@@ -191,13 +193,16 @@ class CLab_CocaTray: Bottle_Base
 
 	//! The gas stove drops its equipment reference before stopping the effects (portablegasstove.c:97-110), so the
 	//! tray stops its own on any move; the next cooking tick restores them if it still cooks. The hold pose follows
-	//! the hands
+	//! the hands. A client applies its visuals again after a move, which can bring the server's copy of them
 	override void EEItemLocationChanged(notnull InventoryLocation oldLoc, notnull InventoryLocation newLoc)
 	{
 		super.EEItemLocationChanged(oldLoc, newLoc);
 
 		if (!g_Game.IsServer())
+		{
+			CLab_UpdateVisuals();
 			return;
+		}
 
 		CLab_StopCookingEffects();
 		CLab_SetHeld(newLoc.GetType() == InventoryLocationType.HANDS);
@@ -581,9 +586,8 @@ class CLab_CocaTray: Bottle_Base
 
 		CLab_UpdateTimer(m_CLab_BudCount > 0 && !cooking && !ruined);
 
-		// A dedicated server renders nothing; clients update from OnVariablesSynchronized
-		if (!g_Game.IsDedicatedServer())
-			CLab_UpdateVisuals();
+		// The server writes the visuals too, so they travel with the object; clients also update from OnVariablesSynchronized
+		CLab_UpdateVisuals();
 	}
 
 	//! Timer callback (server). No allocations here: it runs every TICK_SECONDS per tray.
@@ -656,24 +660,35 @@ class CLab_CocaTray: Bottle_Base
 		return 1;
 	}
 
-	//! Client and server: selections and textures from the synchronized fields and the quantity
+	//! Client and server: selections and textures from the synchronized fields and the quantity. The server writes them
+	//! as well because it sends its own copy with the object: set on the client alone, the liquid went back to the config
+	//! color when a drop from hands sent the tray again (vanilla sets its runtime materials server side, chemlight.c:68)
 	void CLab_UpdateVisuals()
 	{
 		bool hasPowder = m_CLab_CookStage >= COOK_WHITE;
 		bool visible;
 		int i;
 
-		for (i = 0; i < MAX_BUDS; i++)
-		{
-			visible = i < m_CLab_BudCount && !hasPowder;
-			SetSimpleHiddenSelectionState(SEL_FIRST_BUD + i, visible);
-		}
-
 		int level = 0;
 		float quantity = GetQuantity();
 		float quantityMax = GetQuantityMax();
 		if (quantity > 0 && quantityMax > 0)
 			level = (int)Math.Clamp(Math.Ceil(quantity / quantityMax * LIQUID_LEVELS), 1, LIQUID_LEVELS);
+
+		// Every input below, packed: level 0-3, mix 0-3, cook 0-4, buds 0-12
+		if (g_Game.IsDedicatedServer())
+		{
+			int key = level + 4 * m_CLab_MixStage + 16 * m_CLab_CookStage + 128 * m_CLab_BudCount;
+			if (key == m_CLab_VisualKey)
+				return;
+			m_CLab_VisualKey = key;
+		}
+
+		for (i = 0; i < MAX_BUDS; i++)
+		{
+			visible = i < m_CLab_BudCount && !hasPowder;
+			SetSimpleHiddenSelectionState(SEL_FIRST_BUD + i, visible);
+		}
 
 		string liquidTexture = CLab_GetLiquidTexture();
 		for (i = 0; i < LIQUID_LEVELS; i++)
