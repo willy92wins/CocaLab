@@ -135,7 +135,7 @@ class CfgVehicles
 				animPeriod=0.0099999998;
 				initPhase=0;
 			};
-			// Held in hands 0 or 1, set on the server; model.cfg lifts the tray between the hands and raises its left end
+			// Held in hands 0 or 1, set on the server; model.cfg lifts the tray between the hands and moves it towards the right one
 			class clab_hold
 			{
 				source="user";
